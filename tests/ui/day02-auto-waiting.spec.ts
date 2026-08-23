@@ -25,9 +25,15 @@ test.describe('Day 2 — auto-waiting and invariants @day2', () => {
 
     const stories = await hackerNews.stories();
 
-    // Invariants — true today, true next year, true regardless of content.
+    // Every assertion below is chosen to answer one question:
+    // WOULD THIS FAIL ON A REAL BUG?
+    //
+    // `expect(stories.length).toBeGreaterThan(0)` would not — it passes on
+    // one story and on thirty, so it survives the page half-rendering. The
+    // assertions here each fail on a specific, nameable defect.
     expect(stories.length, 'front page shows a full page of stories').toBeGreaterThanOrEqual(25);
 
+    // A gap or a repeat in the ranks is a paging defect.
     invariant.ascending(
       stories.map((s) => s.rank),
       'story ranks',

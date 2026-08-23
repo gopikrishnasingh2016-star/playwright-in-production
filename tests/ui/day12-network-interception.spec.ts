@@ -1,4 +1,5 @@
 import { test, expect } from '../../src/fixtures/test-fixtures';
+import { watchForLeakedValues } from '../../src/utils/live-site';
 
 /**
  * DAY 12 — Network interception: testing the states you cannot reproduce.
@@ -58,6 +59,25 @@ test.describe('Day 12 — route interception @day12', () => {
     await context.setOffline(false);
     await page.goto('https://playwright.dev/docs/intro');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  });
+
+  test('no forbidden value ever appears in a response body', async ({ page }) => {
+    // The public-web rehearsal for a check that matters enormously on a
+    // regulated journey: watch every response for values that must never
+    // travel in clear text. On a KYC flow those are a PAN or an Aadhaar
+    // number; here we prove the mechanism using strings that genuinely
+    // must not appear in playwright.dev's traffic.
+    const forbidden = ['BEGIN RSA PRIVATE KEY', 'AKIAIOSFODNN7EXAMPLE'];
+    const leaks = watchForLeakedValues(page, forbidden);
+
+    await page.goto('https://playwright.dev/', { waitUntil: 'load' });
+    await expect(page.getByRole('link', { name: 'Get started' })).toBeVisible();
+
+    expect(leaks.found(), 'no forbidden value in any response body').toEqual([]);
+
+    // Note the ordering: the listener is attached BEFORE the navigation.
+    // Register it afterwards and it silently observes nothing, which is the
+    // classic way a security check passes while checking absolutely nothing.
   });
 
   test('every request the page makes can be audited', async ({ page }) => {

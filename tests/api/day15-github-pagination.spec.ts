@@ -20,11 +20,44 @@ test.describe('Day 15 — pagination and rate limits @day15', () => {
 
     expect(repo.full_name).toBe('microsoft/playwright');
     expect(repo.private).toBe(false);
-    expect(repo.stargazers_count).toBeGreaterThan(50_000);
     invariant.nonEmptyString(repo.default_branch, 'default_branch');
 
-    // Note what is NOT asserted: an exact star count. It changes hourly.
-    // Assert the floor, the type and the shape — never today's number.
+    // A floor is a FALLBACK, not a strategy. Be honest about what it buys:
+    // this catches a total outage and essentially nothing else. It would
+    // pass just as happily if the star count were wrong by 20,000.
+    expect(repo.stargazers_count).toBeGreaterThan(50_000);
+
+    // These are the assertions that actually earn their place, because
+    // each one fails on a specific defect rather than on an outage:
+    expect(new Date(repo.created_at).getTime()).toBeLessThan(
+      new Date(repo.updated_at).getTime(),
+    ); // a record updated before it was created is a data-integrity bug
+    expect(repo.full_name).toBe(`${repo.owner.login}/${repo.name}`);
+    // ^ internal consistency: three fields the API must keep in agreement.
+  });
+
+  test('the same value reported by two endpoints must agree', async ({ github }) => {
+    // THE STRONGEST ASSERTION AVAILABLE ON LIVE DATA.
+    //
+    // We do not know today's star count and we do not need to. We only
+    // insist that the system tells the same story on both of its surfaces.
+    // Completely strict, and completely immune to the number changing.
+    const direct = await github.getRepo('microsoft', 'playwright');
+    const viaSearch = await github.searchRepos('repo:microsoft/playwright', 1);
+
+    expect(viaSearch.items.length).toBe(1);
+    const found = viaSearch.items[0]!;
+
+    expect(found.id, 'search and direct lookup must return the same record').toBe(direct.id);
+    expect(found.full_name).toBe(direct.full_name);
+    expect(found.default_branch).toBe(direct.default_branch);
+
+    // Star counts move constantly, so allow for the two endpoints reading
+    // a shared counter moments apart — but not for them disagreeing wildly.
+    expect(
+      Math.abs(found.stargazers_count - direct.stargazers_count),
+      'the two endpoints should report near-identical star counts',
+    ).toBeLessThan(50);
   });
 
   test('Link headers drive pagination, not a guessed page count', async ({

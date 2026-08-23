@@ -1,7 +1,3 @@
-# playwright-in-production
-
-Playwright + TypeScript, built in public over 30 days. Every test runs against a real production site. No demo sandboxes.
-
 # 30 Days of Playwright in Production
 
 [![Playwright Suite](https://github.com/gopikrishnasingh/playwright-in-production/actions/workflows/playwright.yml/badge.svg)](https://github.com/gopikrishnasingh/playwright-in-production/actions/workflows/playwright.yml)
@@ -26,12 +22,28 @@ Testing against live production forces a discipline that transfers directly to c
 
 | A demo site lets you write | A live site forces you to write |
 |---|---|
-| `expect(price).toBe('$29.99')` | `expect(price).toBeGreaterThan(0)` |
-| `expect(rows).toHaveCount(5)` | `expect(rows.length).toBeGreaterThanOrEqual(25)` |
-| `expect(topStory).toBe('Hello World')` | ranks ascending, titles unique, none empty |
+| `expect(price).toBe('$29.99')` | `expect(uiPrice).toBe(apiPrice)` |
+| `expect(rows).toHaveCount(5)` | ranks ascending, no gaps, no duplicates across pages |
+| `expect(topStory).toBe('Hello World')` | every title non-empty, unique within the page |
 | 16 parallel workers, no consequences | 2 workers, honest User-Agent, rate limits respected |
 
-That second column is what a regression suite looks like when it survives two years without weekly maintenance. It is the whole point of this exercise.
+**The fix is not "assert loosely."** This is where most people land, and it is worse than where they started:
+
+```ts
+expect(price).toBeGreaterThan(0);   // survives forever — and passes when
+                                    // the pricing engine returns ₹1
+```
+
+That test would survive the feature being broken, which makes it worse than the brittle literal it replaced. The right question for any assertion is **would this fail on a real bug?**
+
+What survives content changes *and* catches defects is asserting the rule rather than the reading — in order of strength:
+
+1. **Cross-surface agreement.** The UI value equals the API value. Strict and change-proof at once. See `tests/hybrid/`.
+2. **Domain bounds from real business rules.** "Inside the band the product allows", not "positive".
+3. **Structural invariants.** Ordered, unique, complete. A duplicate is a dedup bug; a rank gap is a paging bug. See `src/utils/live-site.ts`.
+4. **A floor or type check.** The fallback when nothing above exists. Catches an outage and little else — use it knowingly.
+
+That ladder is the whole point of this exercise, and you cannot learn it anywhere the data never changes.
 
 Every target was checked against its `robots.txt` before inclusion, and one strong candidate was dropped because of what I found. See **[docs/RESPONSIBLE-AUTOMATION.md](./docs/RESPONSIBLE-AUTOMATION.md)** — I would rather be judged on that file than on the test count.
 
@@ -147,8 +159,8 @@ The nightly CI run exists precisely to catch this — see `.github/workflows/pla
 
 ## Three ideas this repo argues for
 
-**1. Assert invariants, not values.**
-On a live site you can never assert "the top story is X". You assert what must be true of *any* correct rendering: non-empty, ordered, unique, within range. Suites written this way stop needing maintenance commits. `src/utils/live-site.ts` makes it a first-class helper rather than a habit you have to remember.
+**1. Assert the rule, not the reading.**
+Not "assert loosely" — that trades a brittle test for a useless one. Assert what the system must guarantee: that its surfaces agree, that values sit inside the band the rules allow, that structure holds. Strict and change-proof at the same time. `src/utils/live-site.ts` documents the full ladder and makes the structural tier a first-class helper.
 
 **2. API-driven setup, UI-driven assertion.**
 Driving preconditions through the browser is slow, flaky, and tests the same login form four hundred times. Set state over the API; use the browser only for what only a browser can check. On a retail-banking onboarding suite this pattern took a 40-minute run under 10 minutes and removed most of its cross-screen flake. See `tests/hybrid/`.

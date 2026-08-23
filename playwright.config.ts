@@ -12,11 +12,7 @@ import { USER_AGENT, githubHeaders, GITHUB_API } from './src/utils/constants';
  * User-Agent, and read-only traffic. See docs/RESPONSIBLE-AUTOMATION.md.
  */
 
-const IS_CI = !!(
-  globalThis as typeof globalThis & {
-    process?: { env?: Record<string, string | undefined> };
-  }
-).process?.env?.CI;
+const IS_CI = !!process.env.CI;
 
 export default defineConfig({
   testDir: './tests',
