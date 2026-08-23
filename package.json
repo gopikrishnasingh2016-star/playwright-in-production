@@ -1,0 +1,38 @@
+{
+  "name": "playwright-in-production",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A production-grade Playwright + TypeScript framework built in public over 30 days, tested against real live websites and public APIs — no demo sandboxes.",
+  "author": "Gopi Krishna Singh",
+  "license": "MIT",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --project=chromium tests/ui",
+    "test:api": "playwright test --project=api tests/api",
+    "test:hybrid": "playwright test --project=hybrid",
+    "test:all-browsers": "playwright test --project=chromium --project=firefox --project=webkit",
+    "test:headed": "playwright test --headed --project=chromium",
+    "test:debug": "playwright test --debug --project=chromium",
+    "test:uimode": "playwright test --ui",
+    "test:day": "playwright test --grep",
+    "report": "playwright show-report",
+    "trace": "playwright show-trace",
+    "codegen": "playwright codegen https://playwright.dev",
+    "typecheck": "tsc --noEmit",
+    "lint:tests": "playwright test --list",
+    "install:browsers": "playwright install --with-deps chromium firefox webkit",
+    "update:snapshots": "playwright test --update-snapshots --project=chromium"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.1",
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^22.10.0",
+    "dotenv": "^16.4.7",
+    "typescript": "^5.7.2",
+    "zod": "^3.24.1"
+  }
+}
