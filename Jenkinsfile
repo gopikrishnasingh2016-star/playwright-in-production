@@ -1,16 +1,29 @@
 pipeline {
   agent any
 
+  environment {
+    PW_IMAGE = 'mcr.microsoft.com/playwright:v1.56.0-noble'
+  }
+
   stages {
-    stage('Build') {
-      steps {
-        bat 'docker run --rm -v "%WORKSPACE%":/app -w /app node:24.19.0-alpine3.24 sh -c "npm ci && npm run build"'
-      }
-    }
     stage('Test') {
       steps {
-        bat 'docker run --rm -v "%WORKSPACE%":/app -w /app node:24.19.0-alpine3.24 sh -c "npm test"'
+        bat """
+          docker run --rm ^
+            -v "%WORKSPACE%":/app ^
+            -w /app ^
+            -e CI=true ^
+            %PW_IMAGE% ^
+            sh -c "npm ci && npx playwright test"
+        """
       }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'playwright-report/**', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'test-results/**', allowEmptyArchive: true
     }
   }
 }
